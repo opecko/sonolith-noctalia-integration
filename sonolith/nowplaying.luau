@@ -590,13 +590,16 @@ local function lyricsSection()
   if lyrics.status ~= "found" or lyrics.tier == "unsynced" then
     return nil
   end
-  local children = {
-    ui.label({ text = lyrics.line or "♪", fontWeight = "medium", color = "primary", maxLines = 2 }),
-  }
-  if lyrics.nextLine then
-    table.insert(children, ui.label({ text = lyrics.nextLine, fontSize = 12, color = "on_surface_variant", maxLines = 1 }))
+  -- One fixed-height line, so it never takes the queue's space. Between lines (a break, or before the first
+  -- one) it shows the line that comes next, dimmed.
+  local text, color = lyrics.line, "primary"
+  if not text then
+    text, color = lyrics.nextLine or "♪", "on_surface_variant"
   end
-  return ui.column({ gap = 4, padding = 12, radius = 12, fill = "surface_container_high" }, children)
+  return ui.row({ gap = 8, paddingH = 12, height = 40, radius = 10, align = "center", fill = "surface_container_high" }, {
+    ui.glyph({ name = "microphone-2", size = 16, color = "on_surface_variant" }),
+    ui.label({ text = text, fontWeight = "medium", color = color, maxLines = 1, flexGrow = 1 }),
+  })
 end
 
 ---- The player
