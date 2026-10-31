@@ -1,0 +1,41 @@
+# Sonolith for Noctalia: what's playing in your bar, a Now Playing panel and your library.
+#
+#   service.luau     the only entry that talks to Sonolith (through bridge/sonolith-bridge.py); publishes
+#                    noctalia.state and runs the UI entries' commands
+#   nowplaying.luau  the Now Playing panel (and the connect screens)
+#
+# IPC: noctalia msg plugin opecko/sonolith:service all <toggle|next|previous|like|volume-up|volume-down|open|library>
+
+id = "opecko/sonolith"
+name = "Sonolith"
+version = "0.1.0"
+plugin_api = 43
+author = "opecko"
+license = "MIT"
+icon = "music"
+description = "What's playing in Sonolith, in your bar: playback controls, lyrics, queue and your YouTube Music library."
+tags = ["music", "media", "youtube-music"]
+dependencies = ["python3"]
+
+[[setting]]
+key = "volume_step"
+type = "int"
+label_key = "settings.volume_step.label"
+description_key = "settings.volume_step.description"
+default = 5
+min = 1
+max = 20
+
+[[service]]
+id = "service"
+entry = "service.luau"
+
+[[panel]]
+id = "nowplaying"
+entry = "nowplaying.luau"
+width = 380
+height = "content"
+max_height = 640
+placement = "attached"
+position = "auto"
+open_near_click = true
