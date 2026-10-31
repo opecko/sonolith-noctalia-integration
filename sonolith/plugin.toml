@@ -9,15 +9,15 @@
 # IPC: noctalia msg plugin opecko/sonolith:service all <toggle|next|previous|like|volume-up|volume-down|open|library>
 
 id = "opecko/sonolith"
-name = "Sonolith Noctalia integration"
+name = "Sonolith"
 version = "1.0.0"
 plugin_api = 43
 author = "opecko"
 license = "MIT"
 icon = "music"
 description = "What's playing in Sonolith, in your bar: playback controls, lyrics, queue and your YouTube Music library."
-tags = ["music", "media", "youtube-music"]
-dependencies = ["python3"]
+tags = ["bar", "panel", "service", "media", "music"]
+dependencies = ["python3", "sonolith", "imagemagick", "libsecret"]
 
 [[setting]]
 key = "volume_step"

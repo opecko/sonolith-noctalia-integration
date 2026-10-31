@@ -1,4 +1,4 @@
-# Sonolith Noctalia integration
+# Sonolith for Noctalia
 
 Noctalia plugin source repo.
 

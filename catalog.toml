@@ -3,7 +3,7 @@
 
 [[plugin]]
 id = "opecko/sonolith"
-name = "Sonolith Noctalia integration"
+name = "Sonolith"
 version = "1.0.0"
 author = "opecko"
 license = "MIT"
