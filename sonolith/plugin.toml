@@ -9,7 +9,7 @@
 # IPC: noctalia msg plugin opecko/sonolith:service all <toggle|next|previous|like|volume-up|volume-down|open|library>
 
 id = "opecko/sonolith"
-name = "Sonolith"
+name = "Sonolith Noctalia integration"
 version = "0.1.0"
 plugin_api = 43
 author = "opecko"
