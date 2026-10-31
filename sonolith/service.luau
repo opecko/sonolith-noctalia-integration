@@ -12,6 +12,8 @@
 --   toggle | next | previous | like | volume-up | volume-down | open | library | connect | disconnect
 
 local S = require("./lib/state.luau")
+local art = require("./lib/art.luau")
+local format = require("./lib/format.luau")
 
 local SILENCE_MS = 15000 -- the daemon prints a heartbeat every 5 s
 local QUEUE_DEBOUNCE_MS = 300
@@ -214,10 +216,28 @@ local function publishLyrics()
   put(S.LYRICS, lyrics)
 end
 
+-- The previous art stays published while the new one downloads, so the bar never flashes empty.
+local function fetchArt(item)
+  if not item or not item.id then
+    return
+  end
+  art.fetch(item.id, item.thumbnailUrl, function(path)
+    if path and track and track.id == item.id then
+      put(S.ART, { trackId = item.id, path = path })
+    end
+  end, true)
+end
+
 local function setTrack(item)
   local oldId = track and track.id
   track = item
   put(S.TRACK, { item = item })
+  if item and item.id ~= oldId then
+    fetchArt(item)
+    if oldId and noctalia.getConfig("osd_on_track_change") then
+      noctalia.osd.show("music", `{item.title} – {format.artists(item)}`)
+    end
+  end
   if (item and item.id) ~= oldId and lyrics and lyrics.trackId ~= (item and item.id) then
     lyrics, lyricsLines = nil, nil
     publishLyrics()
