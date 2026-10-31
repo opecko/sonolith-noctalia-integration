@@ -141,7 +141,7 @@ end
 
 local function artNode(item)
   local art = S.get(S.ART)
-  local path = type(art) == "table" and art.path or nil
+  local path = type(art) == "table" and (art.thumb or art.path) or nil
   if path then
     lastArtPath = path
   end

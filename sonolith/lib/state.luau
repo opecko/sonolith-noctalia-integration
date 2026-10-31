@@ -10,7 +10,7 @@ M.SIGNED_IN = "signedIn" -- boolean
 M.APP_VERSION = "appVersion" -- Sonolith version string
 M.PLAYER = "player" -- PlayerState
 M.TRACK = "track" -- { item = MediaItem? }
-M.ART = "art" -- { trackId, path }
+M.ART = "art" -- { trackId, path (512 px), thumb (128 px) }
 M.POSITION = "position" -- { positionMs, positionAt, durationMs, rate, status }
 M.QUEUE = "queue" -- QueueSummary + { items = { QueueEntry } }
 M.LYRICS = "lyrics" -- { trackId, status, tier, lineIndex?, line?, nextLine? }

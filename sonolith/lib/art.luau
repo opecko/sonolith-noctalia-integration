@@ -1,19 +1,29 @@
 --!nonstrict
--- Album art cache: downloads thumbnailUrl into pluginDataDir()/art/<id>.jpg (ui.image takes local files
--- only), at most 4 downloads at a time, keeping about 80 files (the oldest by mtime go first).
--- URLs are fetched as given, as the Sonolith spec asks.
+-- Album art cache. ui.image takes local files only, so thumbnailUrl is downloaded into
+-- pluginDataDir()/art/, at most 4 downloads at a time, and the oldest files (by mtime) go past ~80 items.
+--
+-- The URL is fetched as given, as the Sonolith spec asks; Sonolith hands out ~1200 px art. Decoding that
+-- for a 32 px queue row stalls the panel, so when ImageMagick is installed each image is scaled down
+-- locally into <id>.jpg (512 px, big art) and <id>.t.jpg (128 px, bar and lists). Without it both
+-- names point at the original.
+--
+--   art.fetch(id, url, function(full, thumb) ... end, front)
+--   art.cached(id) -> full, thumb (or nil)
 
 local M = {}
 
-local MAX_FILES = 80
+local MAX_ITEMS = 80
 local MAX_ACTIVE = 4
 local PRUNE_EVERY = 10
+local FULL_SIZE = "512x512>"
+local THUMB_SIZE = "128x128>"
 
 local dir = nil
 local queue = {}
-local waiting = {} -- path -> { callbacks }
+local waiting = {} -- id -> { callbacks }
 local active = 0
-local downloaded = 0
+local finished = 0
+local magick = nil -- argv prefix, false when absent
 
 local function artDir()
   if not dir then
@@ -27,28 +37,51 @@ local function artDir()
   return dir
 end
 
+local function magickArgv()
+  if magick == nil then
+    if noctalia.commandExists("magick") then
+      magick = { "magick" }
+    elseif noctalia.commandExists("convert") then
+      magick = { "convert" }
+    else
+      magick = false
+    end
+  end
+  return magick
+end
+
 local function safeId(id)
   return (string.gsub(id, "[^%w_%-]", "_"))
 end
 
-function M.pathFor(id)
+local function paths(id)
   local d = artDir()
-  return d and `{d}/{safeId(id)}.jpg` or nil
+  if not d or not id then
+    return nil, nil
+  end
+  local base = `{d}/{safeId(id)}`
+  return base .. ".jpg", base .. ".t.jpg"
 end
 
--- A cached file for this id, or nil; never downloads.
+-- full, thumb for a cached item; thumb falls back to full when nothing could scale it.
 function M.cached(id)
-  local path = id and M.pathFor(id)
-  if path and noctalia.fileExists(path) then
-    return path
+  local full, thumb = paths(id)
+  if not full or not noctalia.fileExists(full) then
+    return nil, nil
   end
-  return nil
+  if noctalia.fileExists(thumb) then
+    return full, thumb
+  end
+  if magickArgv() then
+    return nil, nil -- an older, unscaled file: scale it first
+  end
+  return full, full
 end
 
 function M.prune()
   local d = artDir()
   local names = d and noctalia.listDir(d)
-  if not names or #names <= MAX_FILES then
+  if not names or #names <= MAX_ITEMS * 2 then
     return
   end
   local files = {}
@@ -62,64 +95,119 @@ function M.prune()
   table.sort(files, function(a, b)
     return a.mtime < b.mtime
   end)
-  for i = 1, #files - MAX_FILES do
+  for i = 1, #files - MAX_ITEMS * 2 do
     noctalia.removeFile(files[i].path)
   end
 end
 
-local function finish(path, ok)
-  local cbs = waiting[path] or {}
-  waiting[path] = nil
+local function finish(id, full, thumb)
+  local cbs = waiting[id] or {}
+  waiting[id] = nil
   for _, cb in ipairs(cbs) do
-    cb(ok and path or nil)
+    cb(full, thumb)
+  end
+end
+
+-- Scales `src` into full + thumb; `src` may be `full` itself (an older cache file).
+local function scale(src, full, thumb, done)
+  local argv = table.clone(magickArgv())
+  for _, a in ipairs({
+    src, "-strip",
+    "(", "+clone", "-resize", THUMB_SIZE, "-quality", "85", "-write", thumb .. ".tmp.jpg", "+delete", ")",
+    "-resize", FULL_SIZE, "-quality", "90", full .. ".tmp.jpg",
+  }) do
+    table.insert(argv, a)
+  end
+  local started = noctalia.runAsync(argv, function(r)
+    if r.exitCode == 0 and noctalia.renameFile(thumb .. ".tmp.jpg", thumb) and noctalia.renameFile(full .. ".tmp.jpg", full) then
+      if src ~= full then
+        noctalia.removeFile(src)
+      end
+      done(true)
+    else
+      noctalia.removeFile(thumb .. ".tmp.jpg")
+      noctalia.removeFile(full .. ".tmp.jpg")
+      done(false)
+    end
+  end, 15000)
+  if not started then
+    done(false)
   end
 end
 
 local function pump()
   while active < MAX_ACTIVE and #queue > 0 do
     local job = table.remove(queue, 1)
-    local part = job.path .. ".part"
+    local full, thumb = paths(job.id)
     active += 1
-    local started = noctalia.download(job.url, part, function(ok)
+
+    local function done(fullPath, thumbPath)
       active -= 1
-      -- Rename from .part, so a half-written file is never shown or taken for a cached one.
-      if ok then
-        ok = noctalia.renameFile(part, job.path)
-      else
-        noctalia.removeFile(part)
-      end
-      downloaded += 1
-      if downloaded % PRUNE_EVERY == 0 then
+      finished += 1
+      if finished % PRUNE_EVERY == 0 then
         M.prune()
       end
-      finish(job.path, ok)
+      finish(job.id, fullPath, thumbPath)
       pump()
-    end)
-    if not started then
-      active -= 1
-      finish(job.path, false)
+    end
+
+    -- When scaling fails, the original still beats nothing.
+    local function scaled(ok)
+      if ok then
+        done(full, thumb)
+      else
+        done(full, full)
+      end
+    end
+
+    if noctalia.fileExists(full) then
+      scale(full, full, thumb, scaled) -- an unscaled original from before
+    else
+      -- Download to .part, so a half-written file is never shown or taken for a cached one.
+      local part = full .. ".part"
+      local started = noctalia.download(job.url, part, function(ok)
+        if not ok then
+          noctalia.removeFile(part)
+          done(nil, nil)
+        elseif magickArgv() then
+          scale(part, full, thumb, function(scaledOk)
+            if not scaledOk then
+              noctalia.renameFile(part, full)
+            end
+            scaled(scaledOk)
+          end)
+        elseif noctalia.renameFile(part, full) then
+          done(full, full)
+        else
+          done(nil, nil)
+        end
+      end)
+      if not started then
+        done(nil, nil)
+      end
     end
   end
 end
 
--- cb(path | nil). Calls back at once for a cached file; joins a download already on its way.
--- `front` puts the job ahead of the queue (the current track before library thumbnails).
+-- cb(full, thumb) - both nil on failure. Calls back at once for a cached item and joins a download already
+-- on its way. `front` puts the job ahead of the queue (the current track before list thumbnails).
 function M.fetch(id, url, cb, front)
-  local path = id and M.pathFor(id)
-  if not path or type(url) ~= "string" or url == "" then
-    cb(nil)
+  local full, thumb = M.cached(id)
+  if full then
+    cb(full, thumb)
     return
   end
-  if noctalia.fileExists(path) then
-    cb(path)
+  local path = paths(id)
+  if not path or (type(url) ~= "string" or url == "") and not noctalia.fileExists(path) then
+    cb(nil, nil)
     return
   end
-  if waiting[path] then
-    table.insert(waiting[path], cb)
+  if waiting[id] then
+    table.insert(waiting[id], cb)
     return
   end
-  waiting[path] = { cb }
-  local job = { url = url, path = path }
+  waiting[id] = { cb }
+  local job = { id = id, url = url }
   if front then
     table.insert(queue, 1, job)
   else
@@ -130,10 +218,11 @@ end
 
 -- Drops queued (not started) downloads, e.g. when a panel closes.
 function M.clearQueue()
-  for _, job in ipairs(queue) do
-    finish(job.path, false)
-  end
+  local dropped = queue
   queue = {}
+  for _, job in ipairs(dropped) do
+    finish(job.id, nil, nil)
+  end
 end
 
 return M

@@ -77,14 +77,14 @@ local function thumb(item)
   if not item or not item.id then
     return nil
   end
-  local path = thumbs[item.id] or art.cached(item.id)
+  local path = thumbs[item.id] or select(2, art.cached(item.id))
   if path then
     thumbs[item.id] = path
     return path
   end
   if thumbs[item.id] == nil and item.thumbnailUrl then
     thumbs[item.id] = false
-    art.fetch(item.id, item.thumbnailUrl, function(p)
+    art.fetch(item.id, item.thumbnailUrl, function(_, p)
       thumbs[item.id] = p or false
       if p and isOpen then
         render()

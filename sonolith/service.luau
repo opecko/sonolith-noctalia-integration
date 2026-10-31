@@ -221,9 +221,9 @@ local function fetchArt(item)
   if not item or not item.id then
     return
   end
-  art.fetch(item.id, item.thumbnailUrl, function(path)
-    if path and track and track.id == item.id then
-      put(S.ART, { trackId = item.id, path = path })
+  art.fetch(item.id, item.thumbnailUrl, function(full, thumb)
+    if full and track and track.id == item.id then
+      put(S.ART, { trackId = item.id, path = full, thumb = thumb })
     end
   end, true)
 end
