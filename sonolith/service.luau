@@ -302,8 +302,18 @@ events["lyrics.line"] = function(p)
   end
   lyrics.lineIndex = p.lineIndex
   lyrics.line = p.text
-  local nextIdx = (p.lineIndex or -1) + 2 -- lineIndex is 0-based
-  local nextLine = lyricsLines and lyricsLines[nextIdx]
+  local nextLine = nil
+  if p.lineIndex then
+    nextLine = lyricsLines and lyricsLines[p.lineIndex + 2] -- lineIndex is 0-based
+  elseif lyricsLines and p.positionMs then
+    -- A break (or before the first line, or right after a seek into one): the next line to start.
+    for _, line in ipairs(lyricsLines) do
+      if line.startMs and line.startMs > p.positionMs then
+        nextLine = line
+        break
+      end
+    end
+  end
   lyrics.nextLine = nextLine and nextLine.text or nil
   publishLyrics()
 end

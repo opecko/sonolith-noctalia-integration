@@ -80,7 +80,8 @@ function M.mediaRow(item, opts)
     paddingV = 4,
     radius = 8,
     align = "center",
-    fill = opts.selected and "surface_container_high" or nil,
+    -- Explicitly transparent, not nil: a retained node keeps a prop that is left out.
+    fill = opts.selected and "surface_container_high" or "surface_container_high/0",
     onClick = opts.onClick,
   }, children)
 end
