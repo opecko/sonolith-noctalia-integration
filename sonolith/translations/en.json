@@ -55,7 +55,7 @@
   "np.nothingPlaying.body": "Play something in Sonolith, or pick it from your library.",
   "np.like": "Like",
   "np.dislike": "Dislike",
-  "np.saveTo": "Playlist…",
+  "np.saveTo": "Save to playlist…",
   "np.saved": "Saved to {playlist}",
   "np.saved.already": "Already in {playlist}",
   "np.saved.failed": "Couldn't save the song",
@@ -98,5 +98,6 @@
   "toast.timeout.title": "Sonolith didn't answer in time",
   "toast.timeout.body": "YouTube or Sonolith is slow right now. Try again in a moment.",
   "toast.signedOut.title": "Sign in in Sonolith",
-  "toast.signedOut.body": "This needs your YouTube account. Sign in in Sonolith first."
+  "toast.signedOut.body": "This needs your YouTube account. Sign in in Sonolith first.",
+  "np.queue.empty": "Nothing else in the queue."
 }

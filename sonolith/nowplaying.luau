@@ -247,14 +247,15 @@ local function header(connected)
 end
 
 local function menu()
-  local function item(text, glyph, handler, variant)
-    return ui.button({ text = text, glyph = glyph, variant = variant or "ghost", contentAlign = "start", onClick = handler, enabled = not busy })
+  local function item(text, glyph, handler)
+    return ui.button({ text = text, glyph = glyph, variant = "ghost", controlSize = "sm", onClick = handler, enabled = not busy })
   end
-  return ui.column({ gap = 4, padding = 8, radius = 12, fill = "surface_container_high" }, {
+  return ui.row({ gap = 8, paddingH = 8, paddingV = 4, radius = 12, align = "center", fill = "surface_container_high" }, {
     item(tr("np.openSonolith"), "external-link", "onOpenSonolith"),
     item(tr("np.settings"), "settings", "onOpenSettings"),
     item(tr("np.disconnect"), "logout", "onDisconnect"),
-    ui.row({ paddingH = 12, paddingV = 4 }, { credit() }),
+    ui.spacer({ flexGrow = 1 }),
+    credit(),
   })
 end
 
@@ -547,19 +548,32 @@ local function queueSection(limit)
       end
     end
   end
-  if total == 0 then
-    return nil
-  end
   local more = (q.length or 0) - (q.currentIndex or 0) - 1
-  local toggle = (more > limit or showAllQueue) and ui.button({
-    text = showAllQueue and tr("np.queue.less") or tr("np.queue.all"),
-    glyph = showAllQueue and "chevron-up" or "chevron-down",
-    variant = "ghost",
-    controlSize = "sm",
-    onClick = "onToggleQueue",
-  }) or nil
-  table.insert(rows, 1, parts.sectionHeader(tr("np.queue.title"), toggle))
-  return ui.column({ gap = 4 }, rows)
+  local trailing = {}
+  local player = S.get(S.PLAYER)
+  if can("queue:write") and type(player) == "table" then
+    table.insert(trailing, ui.label({ text = tr("np.autoplay"), fontSize = 12, color = "on_surface_variant" }))
+    table.insert(trailing, ui.toggle({ checked = player.autoplay == true, onChange = "onAutoplay" }))
+  end
+  if more > limit or showAllQueue then
+    table.insert(trailing, ui.button({
+      text = showAllQueue and tr("np.queue.less") or tr("np.queue.all"),
+      glyph = showAllQueue and "chevron-up" or "chevron-down",
+      variant = "ghost",
+      controlSize = "sm",
+      onClick = "onToggleQueue",
+    }))
+  end
+  local list
+  if total == 0 then
+    list = ui.label({ text = tr("np.queue.empty"), fontSize = 12, color = "on_surface_variant" })
+  else
+    list = ui.scroll({ flexGrow = 1, gap = 2 }, rows)
+  end
+  return ui.column({ gap = 8, flexGrow = 1 }, {
+    parts.sectionHeader(tr("np.queue.title"), ui.row({ gap = 8, align = "center" }, trailing)),
+    list,
+  })
 end
 
 ---- Lyrics
@@ -587,20 +601,20 @@ end
 
 ---- The player
 
-local function infoBlock(item, large)
+local function infoBlock(item)
   local titleRow = {
-    ui.label({ text = item.title or "", fontSize = large and 17 or 15, fontWeight = "semibold", color = "on_surface", maxLines = 2, flexGrow = 1 }),
+    ui.label({ text = item.title or "", fontSize = 20, fontWeight = "semibold", color = "on_surface", maxLines = 2, flexGrow = 1 }),
   }
   if item.explicit then
     table.insert(titleRow, parts.explicitBadge())
   end
   local children = {
     ui.row({ gap = 8, align = "start" }, titleRow),
-    ui.label({ text = format.artists(item), color = "on_surface_variant", maxLines = 1 }),
+    ui.label({ text = format.artists(item), fontSize = 15, color = "on_surface_variant", maxLines = 1 }),
   }
   local album = format.album(item)
   if album ~= "" and album ~= format.artists(item) then
-    table.insert(children, ui.label({ text = album, fontSize = 12, color = "on_surface_variant/0.8", maxLines = 1 }))
+    table.insert(children, ui.label({ text = album, fontSize = 13, color = "on_surface_variant/0.8", maxLines = 1 }))
   end
 
   -- Rating and saving change the user's YouTube account.
@@ -637,15 +651,18 @@ local function infoBlock(item, large)
         options = names,
         selectedIndex = 0,
         controlSize = "sm",
-        flexGrow = 1,
+        width = 200,
         onChange = "onSaveToPlaylist",
       }))
     end
   end
+  if flash and noctalia.nowMs() < flash.untilMs then
+    table.insert(actions, ui.label({ text = flash.text, fontSize = 12, color = "primary" }))
+  end
   if #actions > 0 then
     table.insert(children, ui.row({ gap = 4, align = "center" }, actions))
   end
-  return ui.column({ gap = 4, flexGrow = 1 }, children)
+  return ui.column({ gap = 4 }, children)
 end
 
 local function seekRow(player, item)
@@ -714,13 +731,12 @@ local function volumeRow(player, item)
       end
     end
     table.insert(children, ui.select({ key = "rate", options = names, selectedIndex = selected, controlSize = "sm", width = 84, onChange = "onRate" }))
-  elseif can("queue:write") then
-    table.insert(children, ui.label({ text = tr("np.autoplay"), fontSize = 12, color = "on_surface_variant" }))
-    table.insert(children, ui.toggle({ checked = player.autoplay == true, onChange = "onAutoplay" }))
   end
   return ui.row({ gap = 8, align = "center" }, children)
 end
 
+-- Two columns: art and the controls on the left, the item, lyrics and queue on the right. The body has a
+-- fixed height (art + controls) so the queue scrolls inside the right column.
 local function playerScreen()
   local item = S.track()
   local player = S.get(S.PLAYER)
@@ -729,48 +745,40 @@ local function playerScreen()
     return statusScreen("music", tr("np.nothingPlaying"), tr("np.nothingPlaying.body"), buttons, "on_surface_variant")
   end
 
-  local large = cfg("np_layout", "compact") == "large_art"
+  local artSize = cfg("np_layout", "compact") == "large_art" and 340 or 260
   local currentArt = S.get(S.ART)
   local artPath = type(currentArt) == "table" and currentArt.trackId == item.id and currentArt.path or nil
   local glyph = item.type == "episode" and "microphone" or "music"
-  local sections = {}
 
-  if large then
-    table.insert(sections, parts.art(artPath, 348, { radius = 12, glyph = glyph }))
-    table.insert(sections, infoBlock(item, true))
-  else
-    table.insert(sections, ui.row({ gap = 12, align = "stretch" }, {
-      parts.art(artPath, 112, { radius = 12, glyph = glyph }),
-      infoBlock(item, false),
-    }))
-  end
-  if flash and noctalia.nowMs() < flash.untilMs then
-    table.insert(sections, ui.label({ text = flash.text, fontSize = 12, color = "primary" }))
-  end
-
-  local controls = { seekRow(player, item) }
+  local left = { parts.art(artPath, artSize, { radius = 16, glyph = glyph }), seekRow(player, item) }
   if can("player:control") then
-    table.insert(controls, transportRow(player, item))
-    table.insert(controls, volumeRow(player, item))
+    table.insert(left, transportRow(player, item))
+    table.insert(left, volumeRow(player, item))
   end
-  table.insert(sections, ui.column({ gap = 8 }, controls))
 
+  local right = { infoBlock(item) }
   if cfg("np_show_lyrics", true) and can("lyrics:read") then
     local lyrics = lyricsSection()
     if lyrics then
-      table.insert(sections, lyrics)
+      table.insert(right, lyrics)
     end
   end
   if cfg("np_show_queue", true) and can("queue:read") then
-    local limit = cfg("np_queue_preview", 3)
-    if limit > 0 or showAllQueue then
-      local queue = queueSection(limit)
-      if queue then
-        table.insert(sections, queue)
-      end
+    local queue = queueSection(cfg("np_queue_preview", 6))
+    if queue then
+      table.insert(right, queue)
     end
   end
-  return ui.column({ gap = 12 }, sections)
+
+  return ui.row({ gap = 24, align = "stretch", height = artSize + 148 }, {
+    ui.column({ gap = 8, width = artSize }, left),
+    ui.column({ gap = 16, flexGrow = 1 }, right),
+  })
+end
+
+-- Connection screens stay a readable width inside the wide panel.
+local function centered(node)
+  return ui.row({ justify = "center", paddingV = 24 }, { ui.column({ width = 440, gap = 12, align = "center" }, { node, credit() }) })
 end
 
 render = function()
@@ -784,12 +792,11 @@ render = function()
     table.insert(children, menu())
   end
   if connected then
-    table.insert(children, ui.scroll({ flexGrow = 1 }, { playerScreen() }))
+    table.insert(children, playerScreen())
   else
-    table.insert(children, connectionScreen(conn))
-    table.insert(children, ui.row({ justify = "center" }, { credit() }))
+    table.insert(children, centered(connectionScreen(conn)))
   end
-  panel.render(ui.column({ gap = 12, padding = 16, fill = "surface_container" }, children))
+  panel.render(ui.column({ gap = 16, padding = 20, fill = "surface_container" }, children))
 end
 
 ---- Lifecycle

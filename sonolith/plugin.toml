@@ -60,9 +60,9 @@ default = true
 key = "np_queue_preview"
 type = "int"
 label_key = "settings.np_queue_preview.label"
-default = 3
-min = 0
-max = 8
+default = 6
+min = 1
+max = 20
 visible_when = { key = "np_show_queue", values = ["true"] }
 
 [[service]]
@@ -203,9 +203,9 @@ entry = "bar.luau"
 [[panel]]
 id = "nowplaying"
 entry = "nowplaying.luau"
-width = 380
+width = 780
 height = "content"
-max_height = 640
+max_height = 600
 placement = "attached"
 position = "auto"
 open_near_click = true
