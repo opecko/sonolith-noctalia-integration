@@ -654,6 +654,7 @@ local function infoBlock(item)
   if can("library:write") and S.get(S.SIGNED_IN) ~= false then
     local rating = currentRating(item)
     table.insert(actions, ui.button({
+      key = "like",
       glyph = rating == "like" and "heart-filled" or "heart",
       variant = "ghost",
       controlSize = "sm",
@@ -663,6 +664,7 @@ local function infoBlock(item)
     }))
     if item.type == "track" then
       table.insert(actions, ui.button({
+        key = "dislike",
         glyph = rating == "dislike" and "thumb-down-filled" or "thumb-down",
         variant = "ghost",
         controlSize = "sm",
@@ -689,7 +691,7 @@ local function infoBlock(item)
     end
   end
   if flash and noctalia.nowMs() < flash.untilMs then
-    table.insert(actions, ui.label({ text = flash.text, fontSize = 12, color = "primary" }))
+    table.insert(actions, ui.label({ key = "flash", text = flash.text, fontSize = 12, color = "primary" }))
   end
   if #actions > 0 then
     table.insert(children, ui.row({ gap = 4, align = "center" }, actions))
@@ -702,7 +704,7 @@ local function seekRow(player, item)
   dur = dur or item.durationMs
   local shown = seekDraft or pos
   local canSeek = can("player:control") and dur ~= nil and dur > 0
-  return ui.row({ gap = 8, align = "center" }, {
+  return ui.row({ key = "seek-row", gap = 8, align = "center" }, {
     ui.label({ text = format.duration(shown), fontSize = 12, color = "on_surface_variant", width = 40 }),
     ui.slider({
       key = "seek",
@@ -738,7 +740,7 @@ local function transportRow(player, item)
       tooltip = tr("np.repeat." .. (mode or "off")),
       onClick = "onRepeat",
     })
-  return ui.row({ gap = 12, justify = "center", align = "center" }, {
+  return ui.row({ key = "transport", gap = 12, justify = "center", align = "center" }, {
     left,
     side({ glyph = "player-skip-back-filled", enabled = player.canGoPrevious ~= false, onClick = "onPrevious" }),
     ui.button({ glyph = playing and "player-pause-filled" or "player-play-filled", variant = "primary", controlSize = "lg", glyphSize = 22, onClick = "onToggle" }),
@@ -764,7 +766,7 @@ local function volumeRow(player, item)
     end
     table.insert(children, ui.select({ key = "rate", options = names, selectedIndex = selected, controlSize = "sm", width = 84, onChange = "onRate" }))
   end
-  return ui.row({ gap = 8, align = "center" }, children)
+  return ui.row({ key = "volume-row", gap = 8, align = "center" }, children)
 end
 
 -- Two columns: art and the controls on the left, the item, lyrics and queue on the right. The body has a

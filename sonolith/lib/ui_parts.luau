@@ -1,5 +1,9 @@
 --!nonstrict
 -- UI pieces shared by the Now Playing and Library panels. Palette roles only, spacing on 4/8/12/16.
+--
+-- Retained nodes are matched to the previous render by key, else by position, and a prop left out keeps
+-- its old value. So siblings that come and go, or change node type (art: placeholder -> image), carry
+-- keys; otherwise a neighbour takes over the old node with its size and fill.
 
 local format = require("./format.luau")
 
@@ -9,11 +13,12 @@ local M = {}
 function M.art(path, size, opts)
   opts = opts or {}
   local radius = opts.round and size / 2 or (opts.radius or 8)
+  local key = opts.key or "art"
   if path then
-    return ui.image({ key = opts.key, path = path, width = size, height = size, radius = radius, fit = "cover" })
+    return ui.image({ key = key .. "-img", path = path, width = size, height = size, radius = radius, fit = "cover" })
   end
   return ui.column({
-    key = opts.key,
+    key = key .. "-ph",
     width = size,
     height = size,
     radius = radius,
@@ -26,7 +31,7 @@ function M.art(path, size, opts)
 end
 
 function M.explicitBadge()
-  return ui.row({ paddingH = 4, radius = 4, fill = "on_surface_variant/0.2", align = "center" }, {
+  return ui.row({ key = "explicit", paddingH = 4, radius = 4, fill = "on_surface_variant/0.2", align = "center" }, {
     ui.label({ text = "E", fontSize = 10, fontWeight = "bold", color = "on_surface_variant" }),
   })
 end
@@ -47,10 +52,11 @@ end
 function M.card(item, opts)
   local size = opts.size or 124
   local nameRow = {
-    ui.label({ text = format.name(item), fontWeight = "medium", color = "on_surface", maxLines = 1, flexGrow = 1 }),
+    ui.label({ key = "name", text = format.name(item), fontWeight = "medium", color = "on_surface", maxLines = 1, flexGrow = 1 }),
   }
   if opts.onPlay or opts.onMenuRight then
     table.insert(nameRow, ui.button({
+      key = "act",
       glyph = opts.onPlay and "player-play" or "dots-vertical",
       variant = "ghost",
       controlSize = "sm",
@@ -62,8 +68,8 @@ function M.card(item, opts)
   local glyph = ({ artist = "user", podcast = "microphone", episode = "microphone", playlist = "playlist", album = "disc" })[item.type]
   return ui.column({ key = opts.key, width = size, gap = 4, onClick = opts.onClick }, {
     M.art(opts.artPath, size, { radius = 10, round = opts.round, glyph = glyph }),
-    ui.row({ gap = 2, align = "center", width = size }, nameRow),
-    ui.label({ text = format.subtitle(item), fontSize = 12, color = "on_surface_variant", maxLines = 1, width = size }),
+    ui.row({ key = "name-row", gap = 2, align = "center", width = size }, nameRow),
+    ui.label({ key = "sub", text = format.subtitle(item), fontSize = 12, color = "on_surface_variant", maxLines = 1, width = size }),
   })
 end
 
@@ -105,23 +111,24 @@ function M.mediaRow(item, opts)
   opts = opts or {}
   local size = opts.artSize or 40
   local titleRow = {
-    ui.label({ text = format.name(item), color = opts.dim and "on_surface/0.6" or "on_surface", maxLines = 1, flexGrow = 1 }),
+    ui.label({ key = "title", text = format.name(item), color = opts.dim and "on_surface/0.6" or "on_surface", maxLines = 1, flexGrow = 1 }),
   }
   if item.explicit then
     table.insert(titleRow, M.explicitBadge())
   end
   local children = {
     M.art(opts.artPath, size, { radius = 6, round = item.type == "artist", glyph = item.type == "episode" and "microphone" or "music" }),
-    ui.column({ gap = 2, flexGrow = 1 }, {
-      ui.row({ gap = 6, align = "center" }, titleRow),
-      ui.label({ text = opts.subtitle or format.subtitle(item), fontSize = 12, color = "on_surface_variant", maxLines = 1 }),
+    ui.column({ key = "info", gap = 2, flexGrow = 1 }, {
+      ui.row({ key = "title-row", gap = 6, align = "center" }, titleRow),
+      ui.label({ key = "sub", text = opts.subtitle or format.subtitle(item), fontSize = 12, color = "on_surface_variant", maxLines = 1 }),
     }),
   }
   if item.durationMs then
-    table.insert(children, ui.label({ text = format.duration(item.durationMs), fontSize = 12, color = "on_surface_variant" }))
+    table.insert(children, ui.label({ key = "dur", text = format.duration(item.durationMs), fontSize = 12, color = "on_surface_variant" }))
   end
   if opts.onMenu or opts.onMenuRight then
     table.insert(children, ui.button({
+      key = "menu",
       glyph = "dots-vertical",
       variant = "ghost",
       controlSize = "sm",

@@ -148,9 +148,10 @@ local function artNode(item)
   path = path or lastArtPath
   local size = settings.artSize
   if path then
-    return ui.image({ path = path, width = size, height = size, radius = settings.artRadius, fit = "cover" })
+    return ui.image({ key = "art-img", path = path, width = size, height = size, radius = settings.artRadius, fit = "cover" })
   end
   return ui.column({
+    key = "art-ph",
     width = size,
     height = size,
     radius = settings.artRadius,
@@ -266,11 +267,12 @@ local function render()
         radius = 1,
       }))
     end
-    table.insert(children, ui.column({ gap = settings.showProgress and 2 or 0, justify = "center" }, textNodes))
+    table.insert(children, ui.column({ key = "text", gap = settings.showProgress and 2 or 0, justify = "center" }, textNodes))
   end
 
   if settings.showStateIcon and S.track() then
     table.insert(children, ui.glyph({
+      key = "state",
       name = paused and "player-pause" or "player-play",
       size = 14,
       color = paused and "on_surface_variant" or "primary",

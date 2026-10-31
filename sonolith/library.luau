@@ -19,7 +19,7 @@ local LAST_TAB = "lib.lastTab"
 local PAGE = 50
 local SEARCH_PAGE = 30
 local GRID_COLS = 4
-local CARD = 124
+local CARD = 116
 local REFRESH_MS = 2 * 60 * 1000
 local SUGGEST_DEBOUNCE_MS = 250
 local SUGGEST_GAP_MS = 500 -- search.suggestions is in the 2/s network class
@@ -79,8 +79,22 @@ local scopeRequestBusy = false
 
 local function render() end -- defined below
 
+-- Panels get update() only on second ticks, so changes are drawn on the next frame tick instead: one
+-- render per frame however many thumbnails land, and no ticks while nothing changes.
+local frameTicks = false
+
+local function wantFrames(on)
+  if on ~= frameTicks then
+    frameTicks = on
+    panel.setNeedsFrameTick(on)
+  end
+end
+
 local function markDirty()
   dirty = true
+  if isOpen then
+    wantFrames(true)
+  end
 end
 
 local function showFlash(text)
@@ -1199,7 +1213,7 @@ end
 
 function onOpen(_context)
   isOpen = true
-  noctalia.setUpdateInterval(100)
+  panel.setWantsSecondTicks(true) -- flash messages and cooldowns expire
   if S.isConnected() then
     loadEditablePlaylists()
     local view = top()
@@ -1212,6 +1226,7 @@ end
 
 function onClose()
   isOpen = false
+  frameTicks = false
   openRow = nil
   art.clearQueue()
   -- Drop the not-yet-downloaded markers so the next open asks again.
@@ -1222,21 +1237,24 @@ function onClose()
   end
 end
 
--- 100 ms ticks: debounced suggestions and coalesced re-renders (thumbnails land in bursts).
-function update()
-  if not isOpen then
-    return
-  end
+function onFrameTick(_deltaMs)
   if suggestAt and now() >= suggestAt and now() - lastSuggestAt >= SUGGEST_GAP_MS then
     suggestAt = nil
     fetchSuggestions()
   end
-  if flash and now() >= flash.untilMs then
-    flash = nil
-    dirty = true
-  end
   if dirty then
     render()
+  end
+  -- Keep ticking only while a debounced suggestion waits.
+  if not dirty and not suggestAt then
+    wantFrames(false)
+  end
+end
+
+function update()
+  if isOpen and flash and now() >= flash.untilMs then
+    flash = nil
+    markDirty()
   end
 end
 
@@ -1262,3 +1280,4 @@ noctalia.state.watch(S.SIGNED_IN, function(value)
   end
   markDirty()
 end)
+
