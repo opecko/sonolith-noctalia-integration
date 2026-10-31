@@ -250,12 +250,11 @@ local function menu()
   local function item(text, glyph, handler)
     return ui.button({ text = text, glyph = glyph, variant = "ghost", controlSize = "sm", onClick = handler, enabled = not busy })
   end
-  return ui.row({ gap = 8, paddingH = 8, paddingV = 4, radius = 12, align = "center", fill = "surface_container_high" }, {
+  return ui.row({ gap = 8, paddingH = 8, height = 44, radius = 12, align = "center", fill = "surface_container_high" }, {
     item(tr("np.openSonolith"), "external-link", "onOpenSonolith"),
     item(tr("np.settings"), "settings", "onOpenSettings"),
     item(tr("np.disconnect"), "logout", "onDisconnect"),
-    ui.spacer({ flexGrow = 1 }),
-    credit(),
+    ui.label({ text = tr("np.usesSonolith"), fontSize = 11, color = "on_surface_variant", flexGrow = 1, textAlign = "end" }),
   })
 end
 
@@ -578,6 +577,18 @@ end
 
 ---- Lyrics
 
+-- How many of the line's words have started, from the extrapolated position.
+local function sungWords(words)
+  local pos = S.positionNow()
+  local count = 0
+  for i, w in ipairs(words) do
+    if w.startMs and w.startMs <= pos then
+      count = i
+    end
+  end
+  return count
+end
+
 local function lyricsSection()
   local lyrics = S.get(S.LYRICS)
   local item = S.track()
@@ -590,15 +601,33 @@ local function lyricsSection()
   if lyrics.status ~= "found" or lyrics.tier == "unsynced" then
     return nil
   end
-  -- One fixed-height line, so it never takes the queue's space. Between lines (a break, or before the first
-  -- one) it shows the line that comes next, dimmed.
-  local text, color = lyrics.line, "primary"
-  if not text then
-    text, color = lyrics.nextLine or "♪", "on_surface_variant"
+  -- Fixed height, so it never takes the queue's space: the current line (lit up word by word when the
+  -- lyrics have word timings) and the next one, dimmed. During a break the first row is a note.
+  local current
+  if not lyrics.line then
+    current = ui.label({ text = "♪", fontWeight = "medium", color = "on_surface_variant", maxLines = 1 })
+  elseif lyrics.words then
+    local sung, rest = {}, {}
+    local count = sungWords(lyrics.words)
+    for i, w in ipairs(lyrics.words) do
+      table.insert(i <= count and sung or rest, w.text)
+    end
+    local sungText, restText = table.concat(sung), table.concat(rest)
+    -- Labels drop edge spaces, so the space between the halves becomes a gap (none inside a split word).
+    local gap = (string.match(sungText, "%s$") and restText ~= "") and 4 or 0
+    current = ui.row({ gap = gap, align = "center" }, {
+      ui.label({ text = noctalia.string.trim(sungText), fontWeight = "medium", color = "primary", maxLines = 1, visible = sungText ~= "" }),
+      ui.label({ text = noctalia.string.trim(restText), fontWeight = "medium", color = "on_surface/0.5", maxLines = 1, flexGrow = 1, visible = restText ~= "" }),
+    })
+  else
+    current = ui.label({ text = lyrics.line, fontWeight = "medium", color = "primary", maxLines = 1 })
   end
-  return ui.row({ gap = 8, paddingH = 12, height = 40, radius = 10, align = "center", fill = "surface_container_high" }, {
+  return ui.row({ gap = 12, paddingH = 12, height = 60, radius = 10, align = "center", fill = "surface_container_high" }, {
     ui.glyph({ name = "microphone-2", size = 16, color = "on_surface_variant" }),
-    ui.label({ text = text, fontWeight = "medium", color = color, maxLines = 1, flexGrow = 1 }),
+    ui.column({ gap = 2, flexGrow = 1, justify = "center" }, {
+      current,
+      ui.label({ text = lyrics.nextLine or "", fontSize = 12, color = "on_surface_variant", maxLines = 1, visible = lyrics.nextLine ~= nil }),
+    }),
   })
 end
 
@@ -784,10 +813,42 @@ local function centered(node)
   return ui.row({ justify = "center", paddingV = 24 }, { ui.column({ width = 440, gap = 12, align = "center" }, { node, credit() }) })
 end
 
+local frameTicks = false
+local lastWordKey = nil
+
+local function wordKey()
+  local lyrics = S.get(S.LYRICS)
+  local player = S.get(S.PLAYER)
+  if not (isOpen and cfg("np_show_lyrics", true) and type(lyrics) == "table" and lyrics.words)
+    or type(player) ~= "table" or player.status ~= "playing" then
+    return nil
+  end
+  return `{lyrics.lineIndex}:{sungWords(lyrics.words)}`
+end
+
+local function syncFrameTicks()
+  local want = wordKey() ~= nil
+  if want ~= frameTicks then
+    frameTicks = want
+    panel.setNeedsFrameTick(want)
+  end
+end
+
+function onFrameTick(_deltaMs)
+  local key = wordKey()
+  if key ~= lastWordKey then
+    lastWordKey = key
+    render()
+  end
+  syncFrameTicks()
+end
+
 render = function()
   if not isOpen then
     return
   end
+  lastWordKey = wordKey()
+  syncFrameTicks()
   local conn = S.get(S.CONN) or { state = "starting" }
   local connected = conn.state == S.CONNECTED
   local children = { header(connected) }
@@ -818,6 +879,7 @@ end
 
 function onClose()
   isOpen = false
+  frameTicks = false
   showAllQueue = false
   fullQueue = nil
   seekDraft = nil

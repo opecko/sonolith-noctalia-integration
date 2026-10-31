@@ -302,9 +302,19 @@ events["lyrics.line"] = function(p)
   end
   lyrics.lineIndex = p.lineIndex
   lyrics.line = p.text
+  lyrics.words = nil
   local nextLine = nil
   if p.lineIndex then
-    nextLine = lyricsLines and lyricsLines[p.lineIndex + 2] -- lineIndex is 0-based
+    local current = lyricsLines and lyricsLines[p.lineIndex + 1] -- lineIndex is 0-based
+    if lyrics.tier == "word" and current and current.words and #current.words > 0 then
+      -- Word timings, so the panel can light the line up word by word without lyrics.word events.
+      local words = {}
+      for _, w in ipairs(current.words) do
+        table.insert(words, { startMs = w.startMs, text = w.text })
+      end
+      lyrics.words = words
+    end
+    nextLine = lyricsLines and lyricsLines[p.lineIndex + 2]
   elseif lyricsLines and p.positionMs then
     -- A break (or before the first line, or right after a seek into one): the next line to start.
     for _, line in ipairs(lyricsLines) do

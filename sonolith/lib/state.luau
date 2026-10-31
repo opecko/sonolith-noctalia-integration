@@ -13,7 +13,7 @@ M.TRACK = "track" -- { item = MediaItem? }
 M.ART = "art" -- { trackId, path (512 px), thumb (128 px) }
 M.POSITION = "position" -- { positionMs, positionAt, durationMs, rate, status }
 M.QUEUE = "queue" -- QueueSummary + { items = { QueueEntry } }
-M.LYRICS = "lyrics" -- { trackId, status, tier, lineIndex?, line?, nextLine? }
+M.LYRICS = "lyrics" -- { trackId, status, tier, lineIndex?, line?, words? ({ startMs, text }), nextLine? }
 M.SCOPE_REQUEST = "scopeRequest" -- outcome of the last app.requestScopes: { status, retryAt? }
 M.REV = "rev" -- bumped on every change
 
