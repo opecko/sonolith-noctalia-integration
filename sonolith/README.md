@@ -20,7 +20,7 @@ library a click away.
 Add this repo as a plugin source and enable the plugin:
 
 ```sh
-noctalia msg plugins source add sonobar git https://github.com/opecko/sonobar
+noctalia msg plugins source add sonolith git https://github.com/opecko/sonolith-noctalia-integration
 noctalia msg plugins enable opecko/sonolith
 ```
 

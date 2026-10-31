@@ -1,4 +1,4 @@
-# sonobar
+# Sonolith Noctalia integration
 
 Noctalia plugin source repo.
 
@@ -7,6 +7,6 @@ Noctalia plugin source repo.
 | [`sonolith/`](sonolith/README.md) | **Sonolith Noctalia integration**: what's playing in [Sonolith](https://github.com/opecko/sonolith), in your bar, with a Now Playing panel and your library |
 
 ```sh
-noctalia msg plugins source add sonobar git https://github.com/opecko/sonobar
+noctalia msg plugins source add sonolith git https://github.com/opecko/sonolith-noctalia-integration
 noctalia msg plugins enable opecko/sonolith
 ```

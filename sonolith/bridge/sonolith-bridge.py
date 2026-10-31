@@ -438,7 +438,7 @@ def daemon_main(data_dir):
             "name": "Sonolith Noctalia integration",
             "description": "Shows what's playing in your Noctalia bar and controls Sonolith.",
             "publisher": "opecko",
-            "homepage": "https://github.com/opecko/sonobar",
+            "homepage": "https://github.com/opecko/sonolith-noctalia-integration",
             "icon": "data:image/png;base64," + ICON_PNG_BASE64,
             "scopes": [{"scope": s, "required": req, "reason": reason} for s, req, reason in SCOPES],
             "apiVersion": API_VERSION,
