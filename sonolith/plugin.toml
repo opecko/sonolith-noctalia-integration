@@ -34,6 +34,37 @@ label_key = "settings.osd_on_track_change.label"
 description_key = "settings.osd_on_track_change.description"
 default = false
 
+[[setting]]
+key = "np_layout"
+type = "select"
+label_key = "settings.np_layout.label"
+default = "compact"
+options = [
+  { value = "compact", label_key = "settings.np_layout.compact" },
+  { value = "large_art", label_key = "settings.np_layout.large_art" },
+]
+
+[[setting]]
+key = "np_show_lyrics"
+type = "bool"
+label_key = "settings.np_show_lyrics.label"
+default = true
+
+[[setting]]
+key = "np_show_queue"
+type = "bool"
+label_key = "settings.np_show_queue.label"
+default = true
+
+[[setting]]
+key = "np_queue_preview"
+type = "int"
+label_key = "settings.np_queue_preview.label"
+default = 3
+min = 0
+max = 8
+visible_when = { key = "np_show_queue", values = ["true"] }
+
 [[service]]
 id = "service"
 entry = "service.luau"

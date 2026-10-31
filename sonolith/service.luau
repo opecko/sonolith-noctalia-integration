@@ -468,7 +468,7 @@ local ipc = {
     run("bridge.disconnect")
   end,
   dump = function()
-    log(noctalia.json.encode({ conn = conn, scopes = scopes, track = track and track.title, rev = rev }) or "?")
+    log(noctalia.json.encode({ conn = conn, scopes = scopes, track = track and track.title, rating = track and track.rating, signedIn = noctalia.state.get(S.SIGNED_IN), rev = rev }) or "?")
   end,
 }
 
