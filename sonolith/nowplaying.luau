@@ -243,14 +243,14 @@ local function header(connected)
   if connected then
     table.insert(children, ui.button({ glyph = "dots-vertical", variant = "ghost", controlSize = "sm", selected = menuOpen, tooltip = tr("np.more"), onClick = "onToggleMenu" }))
   end
-  return ui.row({ gap = 8, align = "center" }, children)
+  return ui.row({ key = "header", gap = 8, align = "center" }, children)
 end
 
 local function menu()
   local function item(text, glyph, handler)
     return ui.button({ text = text, glyph = glyph, variant = "ghost", controlSize = "sm", onClick = handler, enabled = not busy })
   end
-  return ui.row({ gap = 8, paddingH = 8, height = 44, radius = 12, align = "center", fill = "surface_container_high" }, {
+  return ui.row({ key = "menu", gap = 8, paddingH = 8, height = 44, radius = 12, align = "center", fill = "surface_container_high" }, {
     item(tr("np.openSonolith"), "external-link", "onOpenSonolith"),
     item(tr("np.settings"), "settings", "onOpenSettings"),
     item(tr("np.disconnect"), "logout", "onDisconnect"),
@@ -569,7 +569,7 @@ local function queueSection(limit)
   else
     list = ui.scroll({ flexGrow = 1, gap = 2 }, rows)
   end
-  return ui.column({ gap = 8, flexGrow = 1 }, {
+  return ui.column({ key = "queue", gap = 8, flexGrow = 1 }, {
     parts.sectionHeader(tr("np.queue.title"), ui.row({ gap = 8, align = "center" }, trailing)),
     list,
   })
@@ -622,7 +622,7 @@ local function lyricsSection()
   else
     current = ui.label({ text = lyrics.line, fontWeight = "medium", color = "primary", maxLines = 1 })
   end
-  return ui.row({ gap = 12, paddingH = 12, height = 60, radius = 10, align = "center", fill = "surface_container_high" }, {
+  return ui.row({ key = "lyrics", gap = 12, paddingH = 12, height = 60, radius = 10, align = "center", fill = "surface_container_high" }, {
     ui.glyph({ name = "microphone-2", size = 16, color = "on_surface_variant" }),
     ui.column({ gap = 2, flexGrow = 1, justify = "center" }, {
       current,
@@ -694,7 +694,7 @@ local function infoBlock(item)
   if #actions > 0 then
     table.insert(children, ui.row({ gap = 4, align = "center" }, actions))
   end
-  return ui.column({ gap = 4 }, children)
+  return ui.column({ key = "info", gap = 4 }, children)
 end
 
 local function seekRow(player, item)
@@ -802,15 +802,17 @@ local function playerScreen()
     end
   end
 
-  return ui.row({ gap = 24, align = "stretch", height = artSize + 148 }, {
-    ui.column({ gap = 8, width = artSize }, left),
-    ui.column({ gap = 16, flexGrow = 1 }, right),
+  -- Keys and an explicit (transparent) fill: nodes are matched by position, so without them the body
+  -- inherits the ⋮ strip's fill once the strip closes.
+  return ui.row({ key = "body", fill = "surface_container/0", gap = 24, align = "stretch", height = artSize + 148 }, {
+    ui.column({ key = "left", gap = 8, width = artSize }, left),
+    ui.column({ key = "right", gap = 16, flexGrow = 1 }, right),
   })
 end
 
 -- Connection screens stay a readable width inside the wide panel.
 local function centered(node)
-  return ui.row({ justify = "center", paddingV = 24 }, { ui.column({ width = 440, gap = 12, align = "center" }, { node, credit() }) })
+  return ui.row({ key = "connect", justify = "center", paddingV = 24 }, { ui.column({ width = 440, gap = 12, align = "center" }, { node, credit() }) })
 end
 
 local frameTicks = false
@@ -923,3 +925,4 @@ noctalia.state.watch(S.CONN, function(conn)
   end
   render()
 end)
+
