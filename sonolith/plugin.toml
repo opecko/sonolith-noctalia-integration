@@ -4,6 +4,7 @@
 #                    noctalia.state and runs the UI entries' commands
 #   bar.luau         bar widget: art, title, artist; opens Now Playing
 #   nowplaying.luau  the Now Playing panel (and the connect screens)
+#   library.luau     the Library panel: library tabs, search, playlist/album/artist/podcast pages
 #
 # IPC: noctalia msg plugin opecko/sonolith:service all <toggle|next|previous|like|volume-up|volume-down|open|library>
 
@@ -64,6 +65,22 @@ default = 6
 min = 1
 max = 20
 visible_when = { key = "np_show_queue", values = ["true"] }
+
+[[setting]]
+key = "library_default_tab"
+type = "select"
+label_key = "settings.library_default_tab.label"
+default = "last"
+options = [
+  { value = "last", label_key = "settings.library_default_tab.last" },
+  { value = "playlists", label_key = "lib.tab.playlists" },
+  { value = "liked", label_key = "lib.tab.liked" },
+  { value = "albums", label_key = "lib.tab.albums" },
+  { value = "artists", label_key = "lib.tab.artists" },
+  { value = "podcasts", label_key = "lib.tab.podcasts" },
+  { value = "later", label_key = "lib.tab.later" },
+  { value = "history", label_key = "lib.tab.history" },
+]
 
 [[service]]
 id = "service"
@@ -209,3 +226,13 @@ max_height = 600
 placement = "attached"
 position = "auto"
 open_near_click = true
+
+[[panel]]
+id = "library"
+entry = "library.luau"
+width = 780
+height = 560
+placement = "attached"
+position = "auto"
+open_near_click = true
+keyboard_focus = "on_demand"

@@ -42,6 +42,62 @@ function M.sectionHeader(text, trailing)
   return ui.row({ gap = 8, align = "center" }, children)
 end
 
+-- A grid card: art, name, subtitle; the button under it plays on click and opens the menu on right click.
+--   opts: key, artPath, size, round, onClick, onPlay, onMenuRight, playTooltip
+function M.card(item, opts)
+  local size = opts.size or 124
+  local nameRow = {
+    ui.label({ text = format.name(item), fontWeight = "medium", color = "on_surface", maxLines = 1, flexGrow = 1 }),
+  }
+  if opts.onPlay or opts.onMenuRight then
+    table.insert(nameRow, ui.button({
+      glyph = opts.onPlay and "player-play" or "dots-vertical",
+      variant = "ghost",
+      controlSize = "sm",
+      tooltip = opts.playTooltip,
+      onClick = opts.onPlay,
+      onRightClick = opts.onMenuRight,
+    }))
+  end
+  local glyph = ({ artist = "user", podcast = "microphone", episode = "microphone", playlist = "playlist", album = "disc" })[item.type]
+  return ui.column({ key = opts.key, width = size, gap = 4, onClick = opts.onClick }, {
+    M.art(opts.artPath, size, { radius = 10, round = opts.round, glyph = glyph }),
+    ui.row({ gap = 2, align = "center", width = size }, nameRow),
+    ui.label({ text = format.subtitle(item), fontSize = 12, color = "on_surface_variant", maxLines = 1, width = size }),
+  })
+end
+
+-- Loading placeholders.
+function M.skeletonRows(n)
+  local rows = {}
+  for i = 1, n do
+    table.insert(rows, ui.row({ key = "sk" .. i, gap = 12, paddingH = 8, paddingV = 4, align = "center" }, {
+      ui.box({ width = 40, height = 40, radius = 6, fill = "surface_container_high" }),
+      ui.column({ gap = 6, flexGrow = 1 }, {
+        ui.box({ height = 12, width = 180 + (i % 3) * 40, radius = 4, fill = "surface_container_high" }),
+        ui.box({ height = 10, width = 110 + (i % 2) * 30, radius = 4, fill = "surface_container_high" }),
+      }),
+    }))
+  end
+  return rows
+end
+
+function M.skeletonGrid(cols, rows, size)
+  local out = {}
+  for r = 1, rows do
+    local cells = {}
+    for c = 1, cols do
+      table.insert(cells, ui.column({ key = `skc{r}-{c}`, width = size, gap = 6 }, {
+        ui.box({ width = size, height = size, radius = 10, fill = "surface_container_high" }),
+        ui.box({ width = size - 24, height = 12, radius = 4, fill = "surface_container_high" }),
+        ui.box({ width = size - 52, height = 10, radius = 4, fill = "surface_container_high" }),
+      }))
+    end
+    table.insert(out, ui.row({ key = "skr" .. r, gap = 12 }, cells))
+  end
+  return out
+end
+
 -- One media row: art, title (+E), artist, duration, and an optional menu button.
 --   opts: key, artPath, artSize (40), dim, onClick, onMenu (left click), onMenuRight (right click: native menu),
 --         selected, subtitle (overrides the artist line)
@@ -49,16 +105,16 @@ function M.mediaRow(item, opts)
   opts = opts or {}
   local size = opts.artSize or 40
   local titleRow = {
-    ui.label({ text = item.title or "", color = opts.dim and "on_surface/0.6" or "on_surface", maxLines = 1, flexGrow = 1 }),
+    ui.label({ text = format.name(item), color = opts.dim and "on_surface/0.6" or "on_surface", maxLines = 1, flexGrow = 1 }),
   }
   if item.explicit then
     table.insert(titleRow, M.explicitBadge())
   end
   local children = {
-    M.art(opts.artPath, size, { radius = 6, glyph = item.type == "episode" and "microphone" or "music" }),
+    M.art(opts.artPath, size, { radius = 6, round = item.type == "artist", glyph = item.type == "episode" and "microphone" or "music" }),
     ui.column({ gap = 2, flexGrow = 1 }, {
       ui.row({ gap = 6, align = "center" }, titleRow),
-      ui.label({ text = opts.subtitle or format.artists(item), fontSize = 12, color = "on_surface_variant", maxLines = 1 }),
+      ui.label({ text = opts.subtitle or format.subtitle(item), fontSize = 12, color = "on_surface_variant", maxLines = 1 }),
     }),
   }
   if item.durationMs then

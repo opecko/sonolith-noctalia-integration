@@ -53,4 +53,45 @@ function M.album(item)
   return (item.album and item.album.title) or ""
 end
 
+-- A second line for any Item: who made it and what it is.
+function M.subtitle(item)
+  if type(item) ~= "table" then
+    return ""
+  end
+  local t = item.type
+  -- Variadic, so a nil in the middle (no author, no year) does not cut the list short.
+  local function join(...)
+    local parts = table.pack(...)
+    local out = {}
+    for i = 1, parts.n do
+      if parts[i] and parts[i] ~= "" then
+        table.insert(out, parts[i])
+      end
+    end
+    return table.concat(out, " · ")
+  end
+  if t == "track" then
+    return M.artists(item)
+  elseif t == "episode" then
+    return join(item.podcast and item.podcast.title, item.publishedText)
+  elseif t == "album" then
+    local kind = item.albumType == "single" and noctalia.tr("lib.kind.single")
+      or item.albumType == "ep" and "EP"
+      or noctalia.tr("lib.kind.album")
+    return join(kind, M.artists(item), item.year and tostring(item.year))
+  elseif t == "playlist" then
+    return join(item.author, item.trackCount and noctalia.trp("lib.songs", item.trackCount))
+  elseif t == "artist" then
+    return item.subscribersText or noctalia.tr("lib.kind.artist")
+  elseif t == "podcast" then
+    return join(noctalia.tr("lib.kind.podcast"), item.author)
+  end
+  return ""
+end
+
+-- The display name of any Item (artists have `name`, everything else `title`).
+function M.name(item)
+  return type(item) == "table" and (item.title or item.name) or ""
+end
+
 return M
