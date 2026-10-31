@@ -1,0 +1,15 @@
+# Noctalia plugin catalog for this source repo: one [[plugin]] row per plugin subdirectory.
+# Keep it in step with sonolith/plugin.toml (the manifest stays authoritative).
+
+[[plugin]]
+id = "opecko/sonolith"
+name = "Sonolith Noctalia integration"
+version = "1.0.0"
+author = "opecko"
+license = "MIT"
+icon = "music"
+description = "What's playing in Sonolith, in your bar: playback controls, lyrics, queue and your YouTube Music library."
+deprecated = false
+plugin_api = 43
+tags = ["music", "media", "youtube-music"]
+dependencies = ["python3"]
